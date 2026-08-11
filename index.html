@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#1F4A8B">
-  <title>Captura de Puntos — Prototipo PWA</title>
+  <title>Captura de Puntos — Prototipo PWA v3</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -48,6 +48,32 @@
     }
     .badge.online { background: var(--verde); color: white; }
     .badge.offline { background: var(--rojo); color: white; }
+
+    /* Barra de usuario debajo del header */
+    .user-bar {
+      background: white;
+      border-bottom: 1px solid var(--gris-borde);
+      padding: 8px 16px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 52px;
+      z-index: 999;
+    }
+    .user-bar .user-name { color: var(--azul); font-weight: 600; }
+    .user-bar .btn-logout {
+      background: none;
+      border: none;
+      color: var(--rojo);
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 13px;
+      width: auto;
+    }
+
     main { padding: 12px; max-width: 640px; margin: 0 auto; }
     .card {
       background: white;
@@ -82,6 +108,13 @@
     .btn-secondary { background: var(--celeste); color: var(--azul); }
     .btn-verde { background: var(--verde); color: white; }
     .btn-rojo { background: var(--rojo); color: white; }
+    .btn-outline {
+      background: white;
+      color: var(--azul);
+      border: 2px solid var(--azul);
+    }
+    .row-botones { display: flex; gap: 8px; margin-bottom: 8px; }
+    .row-botones button { flex: 1; }
     input, select, textarea {
       font-family: 'Barlow', sans-serif;
       font-size: 15px;
@@ -90,9 +123,10 @@
       border: 1px solid var(--gris-borde);
       border-radius: 6px;
       margin-bottom: 10px;
+      background: white;
     }
     label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
-    #mapa { height: 220px; border-radius: 8px; margin-bottom: 10px; }
+    #mapa { height: 340px; border-radius: 8px; margin-bottom: 10px; }
     .coord-box {
       background: var(--gris-bg);
       padding: 10px;
@@ -157,19 +191,153 @@
     .precision-ok { color: var(--verde); }
     .precision-warn { color: var(--amarillo); }
     .precision-mala { color: var(--rojo); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      padding: 16px;
+    }
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 400px;
+      width: 100%;
+      border-top: 6px solid var(--azul);
+    }
+    .modal h3 {
+      margin: 0 0 12px 0;
+      color: var(--azul);
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .modal-ayuda {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    /* Pantalla de login (full-screen) */
+    .auth-screen {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(180deg, var(--azul) 0%, #143869 100%);
+      z-index: 5000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .auth-card {
+      background: white;
+      border-radius: 14px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .auth-card .logo {
+      text-align: center;
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+    .auth-card h2 {
+      text-align: center;
+      color: var(--azul);
+      margin: 0 0 20px 0;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .auth-info {
+      background: #eef4ff;
+      border-left: 4px solid var(--azul);
+      padding: 10px;
+      font-size: 13px;
+      border-radius: 4px;
+      margin-bottom: 14px;
+      color: #333;
+      line-height: 1.4;
+    }
+    .auth-warn {
+      background: #fff4e6;
+      border-left: 4px solid var(--amarillo);
+      padding: 10px;
+      font-size: 13px;
+      border-radius: 4px;
+      margin-bottom: 14px;
+      color: #333;
+      line-height: 1.4;
+    }
+    .auth-link {
+      display: block;
+      text-align: center;
+      color: var(--azul);
+      font-weight: 600;
+      margin-top: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
+
+  <!-- ===================== PANTALLA DE LOGIN / REGISTRO ===================== -->
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <div class="logo">📍</div>
+      <h2 id="authTitulo">Ingreso al sistema</h2>
+
+      <!-- LOGIN -->
+      <div id="formLogin">
+        <div id="authConexionMsg"></div>
+        <label for="loginCorreo">Correo electrónico</label>
+        <input type="email" id="loginCorreo" placeholder="tucorreo@dominio.com" inputmode="email" autocomplete="email">
+        <button id="btnLogin" class="btn-primary">Ingresar</button>
+        <a class="auth-link" id="linkRegister">¿No tenés cuenta? Registrate</a>
+      </div>
+
+      <!-- REGISTER -->
+      <div id="formRegister" class="hidden">
+        <div class="auth-info">
+          Completá tus datos. Un administrador te va a aprobar el acceso.
+          Necesitás conexión a internet para registrarte.
+        </div>
+        <label for="regCorreo">Correo electrónico</label>
+        <input type="email" id="regCorreo" placeholder="tucorreo@dominio.com" inputmode="email" autocomplete="email">
+        <label for="regNombre">Nombre completo</label>
+        <input type="text" id="regNombre" placeholder="Nombre y apellido" autocomplete="name">
+        <button id="btnRegister" class="btn-verde">Enviar solicitud</button>
+        <a class="auth-link" id="linkLogin">Volver al ingreso</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== APP PRINCIPAL ===================== -->
   <header>
     <h1>📍 Captura de Puntos</h1>
     <span id="badgeConexion" class="badge offline">Offline</span>
   </header>
 
-  <main>
+  <div class="user-bar" id="userBar">
+    <span>👤 <span class="user-name" id="userName">—</span></span>
+    <button class="btn-logout" id="btnLogout">Cerrar sesión</button>
+  </div>
+
+  <main id="mainApp">
     <!-- Captura de GPS -->
     <div class="card">
       <h2>1. Ubicación</h2>
-      <button id="btnUbicacion" class="btn-primary">📡 Capturar mi ubicación</button>
+      <div class="row-botones">
+        <button id="btnUbicacion" class="btn-primary">📡 Usar mi GPS</button>
+        <button id="btnManual" class="btn-outline">✏️ Cargar manualmente</button>
+      </div>
       <div id="estadoGps" class="coord-box hidden">
         <div><span class="label">Estado:</span> <span id="txtEstado">Esperando...</span></div>
       </div>
@@ -187,14 +355,14 @@
       <h2>2. Datos del punto</h2>
       <label for="tipoRegistro">Tipo de registro</label>
       <select id="tipoRegistro">
-        <option value="FOCO">Foco de dengue</option>
-        <option value="LARVITRAMPA">Larvitrampa</option>
-        <option value="VIVIENDA">Vivienda censada</option>
-        <option value="OTRO">Otro</option>
+        <option value="">-- Cargando tipos --</option>
       </select>
 
+      <label for="nroVivienda">N° de vivienda</label>
+      <input type="text" id="nroVivienda" placeholder="Ej: 1234 / S/N / Bis">
+
       <label for="descripcion">Descripción / Domicilio</label>
-      <input type="text" id="descripcion" placeholder="Ej: Calle Belgrano 1234">
+      <input type="text" id="descripcion" placeholder="Ej: Calle Belgrano al 1200">
 
       <label for="observaciones">Observaciones</label>
       <textarea id="observaciones" rows="3" placeholder="Notas del operario..."></textarea>
@@ -214,6 +382,25 @@
       </button>
     </div>
   </main>
+
+  <!-- Modal para carga manual de coordenadas -->
+  <div id="modalManual" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Ingresar coordenadas manualmente</h3>
+      <div class="modal-ayuda">
+        Formato decimal, con punto (no coma). Ejemplo:<br>
+        Latitud: <code>-27.474</code> · Longitud: <code>-58.836</code>
+      </div>
+      <label for="manualLat">Latitud</label>
+      <input type="text" id="manualLat" placeholder="-27.474" inputmode="decimal">
+      <label for="manualLng">Longitud</label>
+      <input type="text" id="manualLng" placeholder="-58.836" inputmode="decimal">
+      <div class="row-botones">
+        <button id="btnManualCancel" class="btn-outline">Cancelar</button>
+        <button id="btnManualOk" class="btn-primary">Confirmar</button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast" class="toast"></div>
 
