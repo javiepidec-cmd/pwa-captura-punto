@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1F4A8B">
+  <title>Captura de Puntos — Prototipo PWA</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --azul: #1F4A8B;
+      --celeste: #90B4E1;
+      --rojo: #F4492E;
+      --amarillo: #FAAE05;
+      --verde: #719C29;
+      --gris-bg: #f4f6fa;
+      --gris-borde: #d9dde5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Barlow', sans-serif;
+      margin: 0;
+      background: var(--gris-bg);
+      color: #222;
+      -webkit-tap-highlight-color: transparent;
+    }
+    header {
+      background: var(--azul);
+      color: white;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+    .badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 600;
+    }
+    .badge.online { background: var(--verde); color: white; }
+    .badge.offline { background: var(--rojo); color: white; }
+    main { padding: 12px; max-width: 640px; margin: 0 auto; }
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border: 1px solid var(--gris-borde);
+    }
+    .card h2 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      color: var(--azul);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    button {
+      font-family: 'Barlow', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 16px;
+      cursor: pointer;
+      width: 100%;
+      transition: opacity 0.15s;
+    }
+    button:active { opacity: 0.7; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--azul); color: white; }
+    .btn-secondary { background: var(--celeste); color: var(--azul); }
+    .btn-verde { background: var(--verde); color: white; }
+    .btn-rojo { background: var(--rojo); color: white; }
+    input, select, textarea {
+      font-family: 'Barlow', sans-serif;
+      font-size: 15px;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--gris-borde);
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+    #mapa { height: 220px; border-radius: 8px; margin-bottom: 10px; }
+    .coord-box {
+      background: var(--gris-bg);
+      padding: 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .coord-box .label { color: #666; font-family: 'Barlow', sans-serif; font-weight: 600; }
+    .ubicacion-detectada {
+      background: #eef4ff;
+      border-left: 4px solid var(--azul);
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .ubicacion-detectada strong { color: var(--azul); }
+    .fuera-corrientes {
+      background: #fff4e6;
+      border-left-color: var(--amarillo);
+    }
+    .lista-pendientes { list-style: none; padding: 0; margin: 0; }
+    .lista-pendientes li {
+      background: var(--gris-bg);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .status-pendiente { background: var(--amarillo); }
+    .status-sincronizado { background: var(--verde); }
+    .status-error { background: var(--rojo); }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 24px;
+      font-size: 14px;
+      z-index: 2000;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      max-width: 90%;
+      text-align: center;
+    }
+    .toast.show { opacity: 1; }
+    .hidden { display: none !important; }
+    .precision-ok { color: var(--verde); }
+    .precision-warn { color: var(--amarillo); }
+    .precision-mala { color: var(--rojo); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📍 Captura de Puntos</h1>
+    <span id="badgeConexion" class="badge offline">Offline</span>
+  </header>
+
+  <main>
+    <!-- Captura de GPS -->
+    <div class="card">
+      <h2>1. Ubicación</h2>
+      <button id="btnUbicacion" class="btn-primary">📡 Capturar mi ubicación</button>
+      <div id="estadoGps" class="coord-box hidden">
+        <div><span class="label">Estado:</span> <span id="txtEstado">Esperando...</span></div>
+      </div>
+      <div id="coordBox" class="coord-box hidden">
+        <div><span class="label">Latitud:</span> <span id="txtLat">-</span></div>
+        <div><span class="label">Longitud:</span> <span id="txtLng">-</span></div>
+        <div><span class="label">Precisión:</span> <span id="txtPrec">-</span></div>
+      </div>
+      <div id="ubicacionDetectada" class="ubicacion-detectada hidden"></div>
+      <div id="mapa" class="hidden"></div>
+    </div>
+
+    <!-- Formulario -->
+    <div id="formulario" class="card hidden">
+      <h2>2. Datos del punto</h2>
+      <label for="tipoRegistro">Tipo de registro</label>
+      <select id="tipoRegistro">
+        <option value="FOCO">Foco de dengue</option>
+        <option value="LARVITRAMPA">Larvitrampa</option>
+        <option value="VIVIENDA">Vivienda censada</option>
+        <option value="OTRO">Otro</option>
+      </select>
+
+      <label for="descripcion">Descripción / Domicilio</label>
+      <input type="text" id="descripcion" placeholder="Ej: Calle Belgrano 1234">
+
+      <label for="observaciones">Observaciones</label>
+      <textarea id="observaciones" rows="3" placeholder="Notas del operario..."></textarea>
+
+      <button id="btnGuardar" class="btn-verde">💾 Guardar punto</button>
+    </div>
+
+    <!-- Cola de pendientes -->
+    <div class="card">
+      <h2>3. Puntos guardados (<span id="contadorPuntos">0</span>)</h2>
+      <ul id="listaPendientes" class="lista-pendientes"></ul>
+      <div id="sinPuntos" style="color: #888; text-align: center; padding: 20px 0;">
+        No hay puntos guardados aún.
+      </div>
+      <button id="btnSincronizar" class="btn-secondary" style="margin-top: 10px;">
+        🔄 Sincronizar ahora
+      </button>
+    </div>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
