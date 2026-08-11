@@ -4,7 +4,7 @@
 //  Cambiá CACHE_VERSION cada vez que actualices archivos para forzar refresh.
 // =========================================================================
 
-const CACHE_VERSION = "captura-v1";
+const CACHE_VERSION = "captura-v3";
 const APP_ASSETS = [
   "./",
   "./index.html",
