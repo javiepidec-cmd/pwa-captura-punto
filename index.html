@@ -48,7 +48,7 @@
     }
     .badge.online { background: var(--verde); color: white; }
     .badge.offline { background: var(--rojo); color: white; }
-
+ 
     /* Barra de usuario debajo del header */
     .user-bar {
       background: white;
@@ -73,7 +73,7 @@
       font-size: 13px;
       width: auto;
     }
-
+ 
     main { padding: 12px; max-width: 640px; margin: 0 auto; }
     .card {
       background: white;
@@ -191,7 +191,7 @@
     .precision-ok { color: var(--verde); }
     .precision-warn { color: var(--amarillo); }
     .precision-mala { color: var(--rojo); }
-
+ 
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -223,7 +223,7 @@
       margin-bottom: 12px;
       line-height: 1.4;
     }
-
+ 
     /* Pantalla de login (full-screen) */
     .auth-screen {
       position: fixed;
@@ -287,13 +287,13 @@
   </style>
 </head>
 <body>
-
+ 
   <!-- ===================== PANTALLA DE LOGIN / REGISTRO ===================== -->
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
       <div class="logo">📍</div>
       <h2 id="authTitulo">Ingreso al sistema</h2>
-
+ 
       <!-- LOGIN -->
       <div id="formLogin">
         <div id="authConexionMsg"></div>
@@ -302,7 +302,7 @@
         <button id="btnLogin" class="btn-primary">Ingresar</button>
         <a class="auth-link" id="linkRegister">¿No tenés cuenta? Registrate</a>
       </div>
-
+ 
       <!-- REGISTER -->
       <div id="formRegister" class="hidden">
         <div class="auth-info">
@@ -318,18 +318,18 @@
       </div>
     </div>
   </div>
-
+ 
   <!-- ===================== APP PRINCIPAL ===================== -->
   <header>
     <h1>📍 Captura de Puntos</h1>
     <span id="badgeConexion" class="badge offline">Offline</span>
   </header>
-
+ 
   <div class="user-bar" id="userBar">
     <span>👤 <span class="user-name" id="userName">—</span></span>
     <button class="btn-logout" id="btnLogout">Cerrar sesión</button>
   </div>
-
+ 
   <main id="mainApp">
     <!-- Captura de GPS -->
     <div class="card">
@@ -349,7 +349,7 @@
       <div id="ubicacionDetectada" class="ubicacion-detectada hidden"></div>
       <div id="mapa" class="hidden"></div>
     </div>
-
+ 
     <!-- Formulario -->
     <div id="formulario" class="card hidden">
       <h2>2. Datos del punto</h2>
@@ -357,19 +357,19 @@
       <select id="tipoRegistro">
         <option value="">-- Cargando tipos --</option>
       </select>
-
+ 
       <label for="nroVivienda">N° de vivienda</label>
       <input type="text" id="nroVivienda" placeholder="Ej: 1234 / S/N / Bis">
-
+ 
       <label for="descripcion">Descripción / Domicilio</label>
       <input type="text" id="descripcion" placeholder="Ej: Calle Belgrano al 1200">
-
+ 
       <label for="observaciones">Observaciones</label>
       <textarea id="observaciones" rows="3" placeholder="Notas del operario..."></textarea>
-
+ 
       <button id="btnGuardar" class="btn-verde">💾 Guardar punto</button>
     </div>
-
+ 
     <!-- Cola de pendientes -->
     <div class="card">
       <h2>3. Puntos guardados (<span id="contadorPuntos">0</span>)</h2>
@@ -382,7 +382,7 @@
       </button>
     </div>
   </main>
-
+ 
   <!-- Modal para carga manual de coordenadas -->
   <div id="modalManual" class="modal-overlay hidden">
     <div class="modal">
@@ -401,11 +401,12 @@
       </div>
     </div>
   </div>
-
+ 
   <div id="toast" class="toast"></div>
-
+ 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
+ 
