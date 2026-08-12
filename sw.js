@@ -2,11 +2,12 @@
 //  SERVICE WORKER  (v5)
 // =========================================================================
 
-const CACHE_VERSION = "captura-v5";
+const CACHE_VERSION = "captura-v6";
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./app.js",
+  "./poligonos.js",
   "./manifest.json",
   "./icon.svg",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
