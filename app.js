@@ -9,24 +9,6 @@
 //      flotante con N° de vivienda y tipo
 // =========================================================================
 
-// ---------- 1. POLÍGONOS DE EJEMPLO ----------
-const POLIGONOS = {
-  type: "FeatureCollection",
-  features: [
-    { type: "Feature", properties: { depto: "CAPITAL", muni: "CORRIENTES" },
-      geometry: { type: "Polygon", coordinates: [[
-        [-58.92,-27.42],[-58.72,-27.42],[-58.72,-27.56],[-58.92,-27.56],[-58.92,-27.42]
-      ]]}},
-    { type: "Feature", properties: { depto: "SAN LUIS DEL PALMAR", muni: "SAN LUIS DEL PALMAR" },
-      geometry: { type: "Polygon", coordinates: [[
-        [-58.65,-27.45],[-58.45,-27.45],[-58.45,-27.60],[-58.65,-27.60],[-58.65,-27.45]
-      ]]}},
-    { type: "Feature", properties: { depto: "SAN COSME", muni: "PASO DE LA PATRIA" },
-      geometry: { type: "Polygon", coordinates: [[
-        [-58.65,-27.28],[-58.45,-27.28],[-58.45,-27.42],[-58.65,-27.42],[-58.65,-27.28]
-      ]]}}
-  ]
-};
 
 // ---------- 2. CONFIGURACIÓN ----------
 const CONFIG = {
