@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#1F4A8B">
-  <title>Captura de Puntos — Prototipo PWA v4</title>
+  <title>Captura de Puntos — Prototipo PWA v5</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -101,14 +101,14 @@
     }
     button {
       font-family: 'Barlow', sans-serif;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       border: none;
       border-radius: 8px;
-      padding: 12px 16px;
+      padding: 12px 10px;
       cursor: pointer;
       width: 100%;
-      transition: opacity 0.15s;
+      transition: opacity 0.15s, background 0.2s;
     }
     button:active { opacity: 0.7; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -116,13 +116,26 @@
     .btn-secondary { background: var(--celeste); color: var(--azul); }
     .btn-verde { background: var(--verde); color: white; }
     .btn-rojo { background: var(--rojo); color: white; }
+    .btn-amarillo { background: var(--amarillo); color: white; }
     .btn-outline {
       background: white;
       color: var(--azul);
       border: 2px solid var(--azul);
     }
-    .row-botones { display: flex; gap: 8px; margin-bottom: 8px; }
+    /* Botón en modo colocación activo (parpadeando sutil) */
+    .btn-colocando {
+      background: var(--amarillo);
+      color: white;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.75; }
+    }
+
+    .row-botones { display: flex; gap: 6px; margin-bottom: 8px; }
     .row-botones button { flex: 1; }
+
     input, select, textarea {
       font-family: 'Barlow', sans-serif;
       font-size: 15px;
@@ -134,7 +147,19 @@
       background: white;
     }
     label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
-    #mapa { height: 400px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--gris-borde); }
+    #mapa {
+      height: 400px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 1px solid var(--gris-borde);
+      transition: border-color 0.3s;
+    }
+    /* Cuando está en modo colocación, borde amarillo */
+    #mapa.modo-colocando {
+      border-color: var(--amarillo);
+      border-width: 3px;
+      cursor: crosshair;
+    }
     .coord-box {
       background: var(--gris-bg);
       padding: 10px;
@@ -261,7 +286,7 @@
       text-decoration: underline;
     }
 
-    /* Marcador personalizado para "mi ubicación" del operario */
+    /* Marcador azul del operario */
     .marker-operario {
       background: #4285F4;
       border: 3px solid white;
@@ -319,13 +344,14 @@
     <div class="card">
       <h2>1. Marcá el punto en el mapa</h2>
       <div class="instrucciones">
-        📌 Tocá el mapa para colocar un punto, o usá el botón <strong>"Usar mi ubicación"</strong>
-        para tomar tu posición GPS actual.
+        📌 Tocá <strong>"Colocar punto"</strong> y después tocá el mapa donde va el punto.
+        O usá <strong>"Mi ubicación"</strong> para tomar tu posición GPS actual.
       </div>
       <div id="mapa"></div>
       <div class="row-botones">
-        <button id="btnUsarUbicacion" class="btn-primary">✅ Usar mi ubicación</button>
-        <button id="btnRefrescarGps" class="btn-outline">🔄 Refrescar GPS</button>
+        <button id="btnColocarPunto" class="btn-primary">📍 Colocar punto</button>
+        <button id="btnUsarUbicacion" class="btn-outline">✅ Mi ubicación</button>
+        <button id="btnRefrescarGps" class="btn-outline">🔄 Refrescar</button>
       </div>
       <div id="coordBox" class="coord-box hidden">
         <div><span class="label">Latitud:</span> <span id="txtLat">-</span></div>
@@ -344,7 +370,7 @@
       </select>
 
       <label for="nroVivienda">N° de vivienda</label>
-      <input type="text" id="nroVivienda" placeholder="Ej: 1234 / S/N / Bis">
+      <input type="text" id="nroVivienda" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 1234" autocomplete="off">
 
       <label for="descripcion">Descripción / Domicilio</label>
       <input type="text" id="descripcion" placeholder="Ej: Calle Belgrano al 1200">
