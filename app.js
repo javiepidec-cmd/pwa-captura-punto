@@ -1,12 +1,12 @@
 // =========================================================================
-//  PROTOTIPO PWA — CAPTURA DE PUNTOS  (v4)
-//  Cambios vs v3:
-//    - Mapa siempre visible desde el arranque de la app
-//    - Tap sobre el mapa para colocar punto (como en mapa_editor)
-//    - Eliminado modal de coordenadas manuales
-//    - Botón "Usar mi ubicación" toma la posición GPS del operario como punto
-//    - Botón "Refrescar GPS" actualiza el marcador azul de posición actual
-//    - Marcador azul (operario) vs marcador institucional (punto capturado)
+//  PROTOTIPO PWA — CAPTURA DE PUNTOS  (v5)
+//  Cambios vs v4:
+//    - Botón "Colocar punto" activa modo colocación (tap en el mapa NO hace
+//      nada hasta que el usuario lo activa explícitamente)
+//    - N° de vivienda solo acepta números (validado)
+//    - Puntos guardados aparecen en el mapa con marcador según estado
+//      (amarillo pendiente, verde sincronizado, rojo error) y tooltip
+//      flotante con N° de vivienda y tipo
 // =========================================================================
 
 // ---------- 1. POLÍGONOS DE EJEMPLO ----------
@@ -39,7 +39,6 @@ const CONFIG = {
   cacheTiposKey: "cacheTiposCaptura",
   sesionKey: "sesionActiva",
   usuariosKey: "usuariosConocidos",
-  // Vista inicial del mapa: centro de Corrientes provincia
   mapaCentroDefault: [-28.5, -58.0],
   mapaZoomDefault: 8,
   mapaZoomGps: 17
@@ -48,12 +47,14 @@ const CONFIG = {
 // ---------- 3. ESTADO ----------
 let db = null;
 let mapa = null;
-let marcadorOperario = null;   // círculo azul: dónde está el operario (GPS)
-let circuloPrecision = null;   // círculo grande claro alrededor del operario
-let marcadorPunto = null;      // marcador institucional: el punto que se va a guardar
-let ultimoFix = null;          // { lat, lng, precision, fuente, depto, muni }
-let ubicacionOperario = null;  // { lat, lng, precision } — actualizada por GPS
+let marcadorOperario = null;
+let circuloPrecision = null;
+let marcadorPunto = null;           // punto por guardar (grande, azul institucional)
+let grupoPuntosGuardados = null;    // LayerGroup con los puntos ya guardados
+let ultimoFix = null;
+let ubicacionOperario = null;
 let sesion = null;
+let modoColocacion = false;         // true cuando el operario activó "Colocar punto"
 
 // ---------- 4. INICIALIZACIÓN ----------
 document.addEventListener("DOMContentLoaded", async () => {
@@ -150,7 +151,7 @@ function entrarAApp() {
   renderizarLista();
   cargarTipos();
   inicializarMapa();
-  refrescarUbicacionGps();  // pedir GPS al arranque
+  refrescarUbicacionGps();
   if (navigator.onLine) sincronizar();
 }
 
@@ -182,7 +183,6 @@ async function intentarLogin() {
       return;
     }
 
-    // OFFLINE
     const conocidos = leerUsuariosConocidos();
     const usr = conocidos[correoInput];
     if (usr && usr.estado === "APROBADO") {
@@ -248,10 +248,10 @@ function cerrarSesion() {
   if (!confirm("¿Cerrar sesión? Los puntos pendientes quedan guardados hasta el próximo ingreso.")) return;
   borrarSesion();
   document.getElementById("loginCorreo").value = "";
-  // Limpiar mapa
   if (mapa) { mapa.remove(); mapa = null; }
   marcadorOperario = null; circuloPrecision = null; marcadorPunto = null;
-  ubicacionOperario = null; ultimoFix = null;
+  grupoPuntosGuardados = null; ubicacionOperario = null; ultimoFix = null;
+  modoColocacion = false;
   mostrarLogin();
   toast("Sesión cerrada");
 }
@@ -325,7 +325,7 @@ function escapeHtml(s) {
 // ==========================================================================
 
 function inicializarMapa() {
-  if (mapa) return;  // ya inicializado
+  if (mapa) return;
 
   mapa = L.map("mapa", { zoomControl: true }).setView(CONFIG.mapaCentroDefault, CONFIG.mapaZoomDefault);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -333,17 +333,49 @@ function inicializarMapa() {
     attribution: "© OSM"
   }).addTo(mapa);
 
-  // Dibujar polígonos de municipios (contornos leves para referencia)
+  // Contornos de referencia de polígonos
   L.geoJSON(POLIGONOS, {
     style: { color: "#1F4A8B", weight: 1.5, fillOpacity: 0.05, opacity: 0.6 }
   }).addTo(mapa);
 
-  // Handler de click en el mapa: colocar punto
+  // Grupo para los puntos guardados (permite refrescar todos juntos)
+  grupoPuntosGuardados = L.layerGroup().addTo(mapa);
+
+  // Handler de click: solo funciona en modo colocación
   mapa.on("click", (e) => {
+    if (!modoColocacion) return;
     colocarPuntoEnMapa(e.latlng.lat, e.latlng.lng, "mapa");
+    desactivarModoColocacion();
   });
 
   setTimeout(() => mapa.invalidateSize(), 200);
+
+  // Pintar puntos guardados iniciales
+  pintarPuntosGuardados();
+}
+
+function activarModoColocacion() {
+  modoColocacion = true;
+  const btn = document.getElementById("btnColocarPunto");
+  btn.classList.remove("btn-primary");
+  btn.classList.add("btn-colocando");
+  btn.innerHTML = "❌ Cancelar colocación";
+  document.getElementById("mapa").classList.add("modo-colocando");
+  toast("Ahora tocá el mapa donde va el punto");
+}
+
+function desactivarModoColocacion() {
+  modoColocacion = false;
+  const btn = document.getElementById("btnColocarPunto");
+  btn.classList.remove("btn-colocando");
+  btn.classList.add("btn-primary");
+  btn.innerHTML = "📍 Colocar punto";
+  document.getElementById("mapa").classList.remove("modo-colocando");
+}
+
+function toggleModoColocacion() {
+  if (modoColocacion) desactivarModoColocacion();
+  else                activarModoColocacion();
 }
 
 function refrescarUbicacionGps() {
@@ -360,11 +392,11 @@ function refrescarUbicacionGps() {
       ubicacionOperario = { lat, lng, precision: prec };
       pintarUbicacionOperario();
       mapa.setView([lat, lng], CONFIG.mapaZoomGps);
-      if (btn) { btn.disabled = false; btn.textContent = "🔄 Refrescar GPS"; }
+      if (btn) { btn.disabled = false; btn.textContent = "🔄 Refrescar"; }
       toast("Ubicación actualizada (precisión: " + prec.toFixed(0) + " m)");
     },
     (err) => {
-      if (btn) { btn.disabled = false; btn.textContent = "🔄 Refrescar GPS"; }
+      if (btn) { btn.disabled = false; btn.textContent = "🔄 Refrescar"; }
       let msg = "Error de GPS: ";
       if (err.code === 1) msg += "permiso denegado";
       else if (err.code === 2) msg += "posición no disponible";
@@ -383,16 +415,10 @@ function pintarUbicacionOperario() {
   if (marcadorOperario) mapa.removeLayer(marcadorOperario);
   if (circuloPrecision) mapa.removeLayer(circuloPrecision);
 
-  // Círculo grande semitransparente = radio de precisión
   circuloPrecision = L.circle([lat, lng], {
-    radius: precision,
-    color: "#4285F4",
-    fillColor: "#4285F4",
-    fillOpacity: 0.1,
-    weight: 1
+    radius: precision, color: "#4285F4", fillColor: "#4285F4", fillOpacity: 0.1, weight: 1
   }).addTo(mapa);
 
-  // Punto central azul = posición del operario
   const icon = L.divIcon({
     className: "",
     html: '<div class="marker-operario"></div>',
@@ -404,7 +430,7 @@ function pintarUbicacionOperario() {
 
 function usarUbicacionComoPunto() {
   if (!ubicacionOperario) {
-    toast("Todavía no hay ubicación GPS. Tocá 'Refrescar GPS' primero.");
+    toast("Todavía no hay ubicación GPS. Tocá 'Refrescar' primero.");
     return;
   }
   const { lat, lng, precision } = ubicacionOperario;
@@ -412,23 +438,57 @@ function usarUbicacionComoPunto() {
 }
 
 function colocarPuntoEnMapa(lat, lng, fuente, precision) {
-  // Quitar marcador anterior si había
   if (marcadorPunto) mapa.removeLayer(marcadorPunto);
 
-  // Marcador institucional del punto
   marcadorPunto = L.circleMarker([lat, lng], {
-    radius: 10,
-    color: "#1F4A8B",
-    fillColor: "#1F4A8B",
-    fillOpacity: 0.85,
-    weight: 3
+    radius: 10, color: "#1F4A8B", fillColor: "#1F4A8B", fillOpacity: 0.85, weight: 3
   }).addTo(mapa);
+  marcadorPunto.bindTooltip("Nuevo punto (sin guardar)", {
+    direction: "top", offset: [0, -8], permanent: false
+  });
 
   procesarFix(lat, lng, precision !== undefined ? precision : null, fuente);
 }
 
 function quitarPuntoDelMapa() {
   if (marcadorPunto && mapa) { mapa.removeLayer(marcadorPunto); marcadorPunto = null; }
+}
+
+// ==========================================================================
+//              PINTAR PUNTOS GUARDADOS EN EL MAPA (con tooltip)
+// ==========================================================================
+
+async function pintarPuntosGuardados() {
+  if (!mapa || !grupoPuntosGuardados) return;
+  grupoPuntosGuardados.clearLayers();
+
+  const puntos = await listarPuntos();
+  puntos.forEach(p => {
+    if (!p.lat || !p.lng) return;
+
+    const color = p.estado === "sincronizado" ? "#719C29"
+                : p.estado === "error"         ? "#F4492E"
+                : "#FAAE05";  // pendiente
+
+    const marker = L.circleMarker([p.lat, p.lng], {
+      radius: 6,
+      color: color,
+      fillColor: color,
+      fillOpacity: 0.75,
+      weight: 2
+    });
+
+    const nvi = p.nroVivienda ? `N° ${escapeHtml(p.nroVivienda)}` : "Sin N°";
+    const info = `<strong>${nvi}</strong><br>${escapeHtml(p.tipo || "")}`;
+    marker.bindTooltip(info, {
+      direction: "top",
+      offset: [0, -6],
+      permanent: false,
+      opacity: 0.95
+    });
+
+    marker.addTo(grupoPuntosGuardados);
+  });
 }
 
 // ==========================================================================
@@ -465,6 +525,8 @@ function procesarFix(lat, lng, precision, fuente) {
   }
 
   document.getElementById("formulario").classList.remove("hidden");
+  // Focus en el primer campo del formulario para agilizar carga
+  setTimeout(() => document.getElementById("tipoRegistro").focus(), 200);
 }
 
 function detectarUbicacion(lat, lng) {
@@ -488,6 +550,12 @@ async function guardarPunto() {
   const tipo = document.getElementById("tipoRegistro").value.trim();
   if (!tipo) { toast("Elegí un tipo de registro"); return; }
 
+  const nroVivienda = document.getElementById("nroVivienda").value.trim();
+  if (nroVivienda && !/^\d+$/.test(nroVivienda)) {
+    toast("El N° de vivienda debe ser solo números");
+    return;
+  }
+
   const punto = {
     uuid: crypto.randomUUID(),
     lat: ultimoFix.lat,
@@ -497,7 +565,7 @@ async function guardarPunto() {
     depto: ultimoFix.depto,
     muni: ultimoFix.muni,
     tipo: tipo,
-    nroVivienda: document.getElementById("nroVivienda").value.trim(),
+    nroVivienda: nroVivienda,
     descripcion: document.getElementById("descripcion").value.trim(),
     observaciones: document.getElementById("observaciones").value.trim(),
     opCorreo: sesion.correo,
@@ -509,7 +577,6 @@ async function guardarPunto() {
   await guardarEnDB(punto);
   toast("Punto guardado localmente ✓");
 
-  // Limpiar UI
   document.getElementById("tipoRegistro").value = "";
   document.getElementById("nroVivienda").value = "";
   document.getElementById("descripcion").value = "";
@@ -521,6 +588,7 @@ async function guardarPunto() {
   ultimoFix = null;
 
   await renderizarLista();
+  await pintarPuntosGuardados();  // refrescar el mapa con el nuevo punto
   if (navigator.onLine) sincronizar();
 }
 
@@ -563,6 +631,7 @@ async function sincronizar() {
     }
   }
   await renderizarLista();
+  await pintarPuntosGuardados();  // refrescar colores (amarillo → verde)
   toast("Sincronización completada");
 }
 
@@ -604,6 +673,7 @@ async function eliminarPunto(uuid) {
   if (!confirm("¿Eliminar este punto de la cola local?")) return;
   await borrarPunto(uuid);
   await renderizarLista();
+  await pintarPuntosGuardados();
   toast("Punto eliminado");
 }
 
@@ -645,11 +715,17 @@ function wireUI() {
   });
   document.getElementById("btnLogout").addEventListener("click", cerrarSesion);
 
-  // App principal
+  // App principal — botones de mapa
+  document.getElementById("btnColocarPunto").addEventListener("click", toggleModoColocacion);
   document.getElementById("btnUsarUbicacion").addEventListener("click", usarUbicacionComoPunto);
   document.getElementById("btnRefrescarGps").addEventListener("click", refrescarUbicacionGps);
   document.getElementById("btnGuardar").addEventListener("click", guardarPunto);
   document.getElementById("btnSincronizar").addEventListener("click", sincronizar);
+
+  // Validación en vivo del N° vivienda: solo permitir dígitos
+  document.getElementById("nroVivienda").addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/[^\d]/g, "");
+  });
 
   document.getElementById("loginCorreo").addEventListener("keydown", (e) => {
     if (e.key === "Enter") intentarLogin();
