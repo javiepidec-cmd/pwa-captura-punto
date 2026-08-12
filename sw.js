@@ -1,11 +1,10 @@
 // =========================================================================
-//  SERVICE WORKER  (v3)
+//  SERVICE WORKER  (v4)
 //  Cachea la app y las librerías externas para funcionamiento offline.
-//  IMPORTANTE: cambiar CACHE_VERSION cada vez que se actualicen archivos
-//  para forzar refresh en los dispositivos ya instalados.
+//  IMPORTANTE: cambiar CACHE_VERSION cada vez que se actualicen archivos.
 // =========================================================================
- 
-const CACHE_VERSION = "captura-v3";
+
+const CACHE_VERSION = "captura-v4";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -17,7 +16,7 @@ const APP_ASSETS = [
   "https://unpkg.com/@turf/turf@6/turf.min.js",
   "https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&display=swap"
 ];
- 
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => {
@@ -26,7 +25,7 @@ self.addEventListener("install", (event) => {
   );
   self.skipWaiting();
 });
- 
+
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -35,18 +34,16 @@ self.addEventListener("activate", (event) => {
   );
   self.clients.claim();
 });
- 
+
 self.addEventListener("fetch", (event) => {
   const url = event.request.url;
   if (event.request.method !== "GET") return;
- 
-  // Nunca cachear llamadas al Apps Script (queremos siempre datos frescos)
+
   if (url.includes("script.google.com")) {
     event.respondWith(fetch(event.request));
     return;
   }
- 
-  // Tiles de OSM en cache separado
+
   if (url.includes("tile.openstreetmap.org")) {
     event.respondWith(
       caches.open("tiles-osm").then(cache =>
@@ -60,7 +57,7 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
- 
+
   event.respondWith(
     caches.match(event.request).then((hit) => {
       return hit || fetch(event.request).then(resp => {
@@ -74,5 +71,4 @@ self.addEventListener("fetch", (event) => {
       });
     })
   );
-});
- 
+}); 
