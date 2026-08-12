@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#1F4A8B">
-  <title>Captura de Puntos — Prototipo PWA v3</title>
+  <title>Captura de Puntos — Prototipo PWA v4</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -48,8 +48,7 @@
     }
     .badge.online { background: var(--verde); color: white; }
     .badge.offline { background: var(--rojo); color: white; }
- 
-    /* Barra de usuario debajo del header */
+
     .user-bar {
       background: white;
       border-bottom: 1px solid var(--gris-borde);
@@ -73,7 +72,7 @@
       font-size: 13px;
       width: auto;
     }
- 
+
     main { padding: 12px; max-width: 640px; margin: 0 auto; }
     .card {
       background: white;
@@ -90,6 +89,15 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+    .instrucciones {
+      font-size: 13px;
+      color: #555;
+      background: #eef4ff;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      line-height: 1.4;
     }
     button {
       font-family: 'Barlow', sans-serif;
@@ -126,7 +134,7 @@
       background: white;
     }
     label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
-    #mapa { height: 340px; border-radius: 8px; margin-bottom: 10px; }
+    #mapa { height: 400px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--gris-borde); }
     .coord-box {
       background: var(--gris-bg);
       padding: 10px;
@@ -191,40 +199,8 @@
     .precision-ok { color: var(--verde); }
     .precision-warn { color: var(--amarillo); }
     .precision-mala { color: var(--rojo); }
- 
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 3000;
-      padding: 16px;
-    }
-    .modal {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      max-width: 400px;
-      width: 100%;
-      border-top: 6px solid var(--azul);
-    }
-    .modal h3 {
-      margin: 0 0 12px 0;
-      color: var(--azul);
-      font-size: 16px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .modal-ayuda {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 12px;
-      line-height: 1.4;
-    }
- 
-    /* Pantalla de login (full-screen) */
+
+    /* Pantalla de login */
     .auth-screen {
       position: fixed;
       inset: 0;
@@ -284,17 +260,26 @@
       cursor: pointer;
       text-decoration: underline;
     }
+
+    /* Marcador personalizado para "mi ubicación" del operario */
+    .marker-operario {
+      background: #4285F4;
+      border: 3px solid white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      box-shadow: 0 0 0 3px rgba(66,133,244,0.3);
+    }
   </style>
 </head>
 <body>
- 
-  <!-- ===================== PANTALLA DE LOGIN / REGISTRO ===================== -->
+
+  <!-- PANTALLA DE LOGIN / REGISTRO -->
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
       <div class="logo">📍</div>
       <h2 id="authTitulo">Ingreso al sistema</h2>
- 
-      <!-- LOGIN -->
+
       <div id="formLogin">
         <div id="authConexionMsg"></div>
         <label for="loginCorreo">Correo electrónico</label>
@@ -302,8 +287,7 @@
         <button id="btnLogin" class="btn-primary">Ingresar</button>
         <a class="auth-link" id="linkRegister">¿No tenés cuenta? Registrate</a>
       </div>
- 
-      <!-- REGISTER -->
+
       <div id="formRegister" class="hidden">
         <div class="auth-info">
           Completá tus datos. Un administrador te va a aprobar el acceso.
@@ -318,28 +302,30 @@
       </div>
     </div>
   </div>
- 
-  <!-- ===================== APP PRINCIPAL ===================== -->
+
+  <!-- APP PRINCIPAL -->
   <header>
     <h1>📍 Captura de Puntos</h1>
     <span id="badgeConexion" class="badge offline">Offline</span>
   </header>
- 
+
   <div class="user-bar" id="userBar">
     <span>👤 <span class="user-name" id="userName">—</span></span>
     <button class="btn-logout" id="btnLogout">Cerrar sesión</button>
   </div>
- 
+
   <main id="mainApp">
-    <!-- Captura de GPS -->
+    <!-- Sección 1: Ubicación con mapa -->
     <div class="card">
-      <h2>1. Ubicación</h2>
-      <div class="row-botones">
-        <button id="btnUbicacion" class="btn-primary">📡 Usar mi GPS</button>
-        <button id="btnManual" class="btn-outline">✏️ Cargar manualmente</button>
+      <h2>1. Marcá el punto en el mapa</h2>
+      <div class="instrucciones">
+        📌 Tocá el mapa para colocar un punto, o usá el botón <strong>"Usar mi ubicación"</strong>
+        para tomar tu posición GPS actual.
       </div>
-      <div id="estadoGps" class="coord-box hidden">
-        <div><span class="label">Estado:</span> <span id="txtEstado">Esperando...</span></div>
+      <div id="mapa"></div>
+      <div class="row-botones">
+        <button id="btnUsarUbicacion" class="btn-primary">✅ Usar mi ubicación</button>
+        <button id="btnRefrescarGps" class="btn-outline">🔄 Refrescar GPS</button>
       </div>
       <div id="coordBox" class="coord-box hidden">
         <div><span class="label">Latitud:</span> <span id="txtLat">-</span></div>
@@ -347,30 +333,29 @@
         <div><span class="label">Precisión:</span> <span id="txtPrec">-</span></div>
       </div>
       <div id="ubicacionDetectada" class="ubicacion-detectada hidden"></div>
-      <div id="mapa" class="hidden"></div>
     </div>
- 
-    <!-- Formulario -->
+
+    <!-- Sección 2: Formulario -->
     <div id="formulario" class="card hidden">
       <h2>2. Datos del punto</h2>
       <label for="tipoRegistro">Tipo de registro</label>
       <select id="tipoRegistro">
         <option value="">-- Cargando tipos --</option>
       </select>
- 
+
       <label for="nroVivienda">N° de vivienda</label>
       <input type="text" id="nroVivienda" placeholder="Ej: 1234 / S/N / Bis">
- 
+
       <label for="descripcion">Descripción / Domicilio</label>
       <input type="text" id="descripcion" placeholder="Ej: Calle Belgrano al 1200">
- 
+
       <label for="observaciones">Observaciones</label>
       <textarea id="observaciones" rows="3" placeholder="Notas del operario..."></textarea>
- 
+
       <button id="btnGuardar" class="btn-verde">💾 Guardar punto</button>
     </div>
- 
-    <!-- Cola de pendientes -->
+
+    <!-- Sección 3: Cola de pendientes -->
     <div class="card">
       <h2>3. Puntos guardados (<span id="contadorPuntos">0</span>)</h2>
       <ul id="listaPendientes" class="lista-pendientes"></ul>
@@ -382,31 +367,11 @@
       </button>
     </div>
   </main>
- 
-  <!-- Modal para carga manual de coordenadas -->
-  <div id="modalManual" class="modal-overlay hidden">
-    <div class="modal">
-      <h3>Ingresar coordenadas manualmente</h3>
-      <div class="modal-ayuda">
-        Formato decimal, con punto (no coma). Ejemplo:<br>
-        Latitud: <code>-27.474</code> · Longitud: <code>-58.836</code>
-      </div>
-      <label for="manualLat">Latitud</label>
-      <input type="text" id="manualLat" placeholder="-27.474" inputmode="decimal">
-      <label for="manualLng">Longitud</label>
-      <input type="text" id="manualLng" placeholder="-58.836" inputmode="decimal">
-      <div class="row-botones">
-        <button id="btnManualCancel" class="btn-outline">Cancelar</button>
-        <button id="btnManualOk" class="btn-primary">Confirmar</button>
-      </div>
-    </div>
-  </div>
- 
+
   <div id="toast" class="toast"></div>
- 
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
- 
