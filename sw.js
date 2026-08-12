@@ -1,10 +1,8 @@
 // =========================================================================
-//  SERVICE WORKER  (v4)
-//  Cachea la app y las librerías externas para funcionamiento offline.
-//  IMPORTANTE: cambiar CACHE_VERSION cada vez que se actualicen archivos.
+//  SERVICE WORKER  (v5)
 // =========================================================================
 
-const CACHE_VERSION = "captura-v4";
+const CACHE_VERSION = "captura-v5";
 const APP_ASSETS = [
   "./",
   "./index.html",
@@ -71,4 +69,4 @@ self.addEventListener("fetch", (event) => {
       });
     })
   );
-}); 
+});
